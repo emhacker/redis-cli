@@ -1,6 +1,7 @@
 (ns redis-cli.core
   (:gen-class)
-  (:require [clojure.java.io :as io]))
+  (:require [clojure.java.io :as io])
+  (:require [clojure.tools.logging :as log]))
 
 (def BUF_SIZE 128)
 
@@ -47,38 +48,38 @@
 
 (defn init-parse
   [chnk ctx]
-  (println "TODO: Init parse pahse")
+  (log/infof "TODO: Init parse pahse")
   (_change-state ctx :num-tokens)
 )
 
 (defn num-tokens-parse
   [chnk ctx]
-  (println "TODO: # of token parse")
+  (log/infof "TODO: # of token parse")
   (_change-state ctx :keys)
 )
 
 (defn keys-parse
   [chnk ctx]
-  (println "Parsing keys.")
+  (log/infof "TODO: Parsing keys.")
   (_change-state ctx :data)
 )
 
 (defn data-parse
   [chnk ctx]
-  (println "Parsing data.")
+  (log/infof "TODO: Parsing data.")
   (_change-state ctx :completed)
 )
 
 (defn completed-parse
   [chnk ctx]
-  (println "Parsing completed")
+  (log/infof "TODO: Parsing completed")
   ctx
 )
 
 (defn choose-parsef
   "Choose the correct parsing function according the given parsing-state"
  [state]
- (printf "choosing function with for state %s\n" state)
+ (log/infof "choosing function with for state %s\n" state)
  (case state
   :init init-parse
   :num-tokens num-tokens-parse
@@ -91,10 +92,10 @@
 (defn parse-chunk
   "Parses the given chunk. Side effect is reflected to the return-value (the context)"
   [chnk ctx]
-  (println "parse-chunk called with context " ctx)
+  (log/infof "parse-chunk called with context " ctx)
   (let [parse-f (choose-parsef (get ctx :state))
         ctx (parse-f chnk ctx)]
-    (println "Updated context is: " ctx)
+    (log/infof "Updated context is: " ctx)
     ctx)
 )
 
