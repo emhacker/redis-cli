@@ -42,7 +42,7 @@
 ; |completed|
 (defn create-ctx
   "returns an initial parsing state"
-  [] {:state :init,
+  [] {:state :state-init,
    :command-ty "NO-CMD"
    :buffer-offset 0,
    :token-parsed 0,
@@ -87,9 +87,9 @@
 (defn _change-state
   "Changes the state in the given context"
   [ctx new-state & args]
-  (if (!= :state :parse-error)
+  (if (!= :state :state-parse-error)
     (assoc ctx :state new-state)
-    (assoc (assoc ctx :state :parse-error) :error-msg args))
+    (assoc (assoc ctx :state :state-parse-error) :error-msg args))
 )
 
 (defn _set-token-number
@@ -106,7 +106,7 @@
       (assoc ctx :command-ty cmd-ty)
       (do
         (log/errorf "Unknown command %s" command-name)
-        (_change-state ctx :parse-error))))
+        (_change-state ctx :state-parse-error))))
 )
 
 (defn _incr-buffer-offset
@@ -123,7 +123,7 @@
     (_incr-buffer-offset ctx 2)
     (do
       (log/errorf "Error eating line ending, the buffer is: %s" chnk)
-      (_change-state ctx :parse-error)))
+      (_change-state ctx :state-parse-error)))
 )
 
 (defn _eat-token
@@ -154,7 +154,7 @@
       :$-sign
       (if (= \$ (first (_get-buffer l-ctx chnk)))
         (recur :token-len (_incr-buffer-offset l-ctx 1) nil)
-        (_change-state ctx :parse-error))
+        (_change-state ctx :state-parse-error))
       :token-len
       (let [tok-len (a-to-i(_get-buffer l-ctx chnk))]
         (recur
@@ -187,9 +187,9 @@
   (if (!= \* (first chnk))
     (do
       (log/error (parse-error (str "Unkown command " (tokenize chnk))))
-      (_change-state ctx :parse-error))
+      (_change-state ctx :state-parse-error))
     (_incr-buffer-offset
-      (_change-state ctx :num-tokens)
+      (_change-state ctx :state-num-tokens)
       1))
 )
 
@@ -204,7 +204,7 @@
           chnk
           (get num-token :len))
         (get num-token :value))
-      :command-name))
+      :state-command-name))
 )
 
 (defn command-name-parse
@@ -214,7 +214,7 @@
   (let [ctx (_parse-token ctx chnk)]
     (_change-state
       (_set-command-ty ctx (get ctx :last-token))
-      :keys))
+      :state-key))
 )
 
 (defn keys-parse
@@ -224,13 +224,13 @@
     (log/infof "Context after key parsing: %s" ctx)
     (_change-state
       (assoc ctx :command-keys (conj cur-keys (get ctx :last-token)))
-      :data))
+      :state-data))
 )
 
 (defn data-parse
   [ctx chnk]
   (log/infof "TODO: Parsing data.")
-  (_change-state ctx :completed)
+  (_change-state ctx :state-completed)
 )
 
 (defn completed-parse
@@ -244,12 +244,12 @@
  [state]
  (log/infof "choosing function for state %s\n" state)
  (case state
-  :init init-parse
-  :num-tokens num-tokens-parse
-  :command-name command-name-parse
-  :keys keys-parse
-  :data data-parse
-  :completed completed-parse
+  :state-init init-parse
+  :state-num-tokens num-tokens-parse
+  :state-command-name command-name-parse
+  :state-key keys-parse
+  :state-data data-parse
+  :state-completed completed-parse
   (throw (AssertionError. (str "Unkown state " state))))
 )
 
@@ -268,7 +268,7 @@
   "Inidicates whether the given parsing context is in final state."
   [ctx]
   (letfn [(cmp-state [s] (= (get ctx :state) s))]
-    (or (cmp-state :completed) (cmp-state :parse-error)))
+    (or (cmp-state :state-completed) (cmp-state :state-parse-error)))
 )
 
 (defn parse
