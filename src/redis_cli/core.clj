@@ -81,6 +81,13 @@
       {:value (.  Integer (valueOf (str ret))) :len (count (str ret))}))
 )
 
+(defn print-and-return
+  "Used for printing info on a returned argument"
+  [value & fmt]
+  (printf fmt value)
+  value
+)
+
 ;;
 ;; Context setters.
 ;;
@@ -89,7 +96,7 @@
   [ctx new-state & args]
   (if (!= :parse-state :state-parse-error)
     (assoc ctx :parse-state new-state)
-    (assoc (assoc ctx :parse-state :state-parse-error) :error-msg args))
+    (-> (assoc ctx :parse-state :state-parse-error) (assoc ,,, :error-msg args)))
 )
 
 (defn _set-token-number
@@ -133,6 +140,13 @@
   (_eat-line-endings
     (_incr-buffer-offset ctx token-len)
     chnk)
+)
+
+(defn _store-key
+  "Appends the last token parsed to the key list."
+  [ctx]
+  (->> (conj (get ctx :command-keys) (get ctx :last-token))
+       (assoc ctx :command-keys ,,,))
 )
 
 ;;
@@ -188,23 +202,16 @@
     (do
       (log/error (parse-error (str "Unkown command " (tokenize chnk))))
       (_change-state ctx :state-parse-error))
-    (_incr-buffer-offset
-      (_change-state ctx :state-num-tokens)
-      1))
+    (-> (_incr-buffer-offset ctx 1) (_change-state ,,, :state-num-tokens)))
 )
 
 (defn num-tokens-parse
   [ctx chnk]
   (log/infof "Parsing # of tokens with context: %s" ctx)
   (let [num-token (a-to-i (_get-buffer ctx chnk))]
-    (_change-state
-      (_set-token-number
-        (_eat-token
-          ctx
-          chnk
-          (get num-token :len))
-        (get num-token :value))
-      :state-command-name))
+    (-> (_change-state ctx :state-command-name)
+        (_eat-token ,,, chnk, (get num-token :len))
+        (_set-token-number ,,, (get num-token :value))))
 )
 
 (defn command-name-parse
@@ -220,11 +227,7 @@
 (defn keys-parse
   [ctx chnk]
   (log/infof "Parsing key with context: %s" ctx)
-  (let [ctx (_parse-token ctx chnk) cur-keys (get ctx :command-keys)]
-    (log/infof "Context after key parsing: %s" ctx)
-    (_change-state
-      (assoc ctx :command-keys (conj cur-keys (get ctx :last-token)))
-      :state-data))
+  (-> (_parse-token ctx chnk) (_change-state ,,, :state-data) (_store-key ,,,))
 )
 
 (defn data-parse
@@ -239,18 +242,30 @@
   ctx
 )
 
+(defn is-final-state?
+  "Inidicates whether the given parsing context is in final state."
+  [ctx]
+  (letfn [(cmp-state [s] (= (get ctx :parse-state) s))]
+    (or (cmp-state :state-completed) (cmp-state :state-parse-error)))
+)
+
 (defn choose-parsef
-  "Choose the correct parsing function according the given parsing-state"
- [state]
- (log/infof "choosing function for state %s\n" state)
- (case state
-  :state-init init-parse
-  :state-num-tokens num-tokens-parse
-  :state-command-name command-name-parse
-  :state-key keys-parse
-  :state-data data-parse
-  :state-completed completed-parse
-  (throw (AssertionError. (str "Unkown state " state))))
+  "Chooses the correct parsing function according the given parsing-state"
+  [ctx]
+  (log/infof "choosing function with ctx %s\n" ctx)
+  (let [state (get ctx :parse-state)]
+    (if (is-final-state? state)
+      state)
+    (if (= (get ctx :num-tokens) (get ctx :token-parsed))
+      (_change-state ctx :state-completed))
+    (case state
+    :state-init init-parse
+    :state-num-tokens num-tokens-parse
+    :state-command-name command-name-parse
+    :state-key keys-parse
+    :state-data data-parse
+    :state-completed completed-parse
+    (throw (AssertionError. (str "Unkown state " state)))))
 )
 
 (defn parse-chunk
@@ -258,12 +273,12 @@
   (the context)"
   [chnk ctx]
   (log/info "parse-chunk called with context " ctx)
-  (let [parse-f (choose-parsef (get ctx :parse-state))
-        ctx (parse-f ctx chnk )]
+  (let [ctx ((choose-parsef ctx) ctx chnk)]
     (log/infof "Updated context is: %s" ctx)
     ctx)
 )
 
+<<<<<<< HEAD
 (defn is-final-state?
   "Inidicates whether the given parsing context is in final state."
   [ctx]
