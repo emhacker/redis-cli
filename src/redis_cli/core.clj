@@ -141,8 +141,11 @@
 (defn _get-buffer [ctx chnk] (subs chnk (get ctx :buffer-offset)))
 
 (defn _parse-token
-  "Parses the next token from the buffer and returned a structured representation
-  of if."
+  "Parses the next token from the buffer.
+   Token representation in REDIS unfied protocol is as follows:
+  $[tok-len]\r\n[token]. The side-effect of this function is reflected to the
+  context returned by this function. Modified feilds are the :buffer-offset entry,
+  and the :last_token"
   [ctx, chnk]
   (loop [p-state :$-sign
          l-ctx ctx
@@ -171,7 +174,7 @@
 )
 
 ;;
-;; Parsing state machine function.
+;; Parsing state machine functions.
 ;;
 (defn init-parse
   "Extract the number of expected tokens, and saves them into the context"
