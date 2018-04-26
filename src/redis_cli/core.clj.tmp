@@ -1,0 +1,46 @@
+(ns redis-cli.core
+ (:require [clojure.java.io :as io]))
+
+(def buf-size 128)
+
+; command names know at compile time.
+(def commands {
+  :append {:key-begin 1},
+  :blpop  {:key-begin 1, :key-stride 1},
+  :brpop  {:key-begin 1, :key-stride 1},
+  :get    {:key-begin 1},
+  :getset {:key-begin 1},
+  :keys   {:all-shards true}, 
+  :mget   {:key-begin 1, :key-stride 1},
+  :mset   {:key-begin 1, :key-stride 2},
+  :msetnx {:key-begin 1, :key-stride 2},
+  :set    {:key-begin 1},
+  :setex  {:key-begin 1},
+  :setnx  {:key-begin 1},
+  :wait   {:all-shards true}
+  })
+
+; state machine is as following:
+; |init|             -- command name -->
+; |waiting keys|     -- keys parsing finished -->
+; |waiting data|     -- data finished -->
+; |command finished|
+(defn begin-parser []
+  "returns an initial parsing state"
+  {:state :init,
+   :token_parsed 0,
+   :num_tokens 0})
+
+(defn parse [^java.io.inputstream is
+             parser-state]
+  "parses the the text in the input stream."
+  (println "elior print, parsing started")
+  (let [buf (byte-array buf-size)]
+    (loop [total-len 0]
+      (let [n (.read is buf)]
+        (if (< n buf-size)
+          (println "reached the end, read " (.string buf))
+          (do
+            (println "still reading, read " (.string buf))
+            (recur (+ total-len n))
+        ))))))
