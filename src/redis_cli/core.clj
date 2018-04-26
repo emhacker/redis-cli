@@ -42,7 +42,7 @@
 ; |completed|
 (defn create-ctx
   "returns an initial parsing state"
-  [] {:state :state-init,
+  [] {:parse-state :state-init,
    :command-ty "NO-CMD"
    :buffer-offset 0,
    :token-parsed 0,
@@ -87,9 +87,9 @@
 (defn _change-state
   "Changes the state in the given context"
   [ctx new-state & args]
-  (if (!= :state :state-parse-error)
-    (assoc ctx :state new-state)
-    (assoc (assoc ctx :state :state-parse-error) :error-msg args))
+  (if (!= :parse-state :state-parse-error)
+    (assoc ctx :parse-state new-state)
+    (assoc (assoc ctx :parse-state :state-parse-error) :error-msg args))
 )
 
 (defn _set-token-number
@@ -258,7 +258,7 @@
   (the context)"
   [chnk ctx]
   (log/info "parse-chunk called with context " ctx)
-  (let [parse-f (choose-parsef (get ctx :state))
+  (let [parse-f (choose-parsef (get ctx :parse-state))
         ctx (parse-f ctx chnk )]
     (log/infof "Updated context is: %s" ctx)
     ctx)
@@ -267,7 +267,7 @@
 (defn is-final-state?
   "Inidicates whether the given parsing context is in final state."
   [ctx]
-  (letfn [(cmp-state [s] (= (get ctx :state) s))]
+  (letfn [(cmp-state [s] (= (get ctx :parse-state) s))]
     (or (cmp-state :state-completed) (cmp-state :state-parse-error)))
 )
 
