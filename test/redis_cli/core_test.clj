@@ -5,11 +5,8 @@
 
 (deftest a-test
   (testing "basic read"
-    ;(let [ctx (parse (io/input-stream "resources/test_get.txt") (create-ctx))]
-      ;(is (= (get ctx :num-tokens) 2))
-      ;(is (= (get ctx :command-ty) (symbol "get")))
-      ;(is (= (get ctx :command-keys) #{"x"}))))
-    (let [res (_parse-token (create-ctx) "$3\r\nset")]
-     (is (= (get res :last-tok) "set")))
-  )
+    (let [ctx (parse (io/input-stream "resources/test_get.txt") (create-ctx))]
+      (is (= (get ctx :num-tokens) 2))
+      (is (= (get ctx :command-ty) (symbol "get")))
+      (is (= (get ctx :command-keys) '("x")))))
 )

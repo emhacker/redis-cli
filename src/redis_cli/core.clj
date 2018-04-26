@@ -149,7 +149,7 @@
   [ctx, chnk]
   (loop [p-state :$-sign
          l-ctx ctx
-         kolboinik nil]
+         offset-inc nil]
     (case p-state
       :$-sign
       (if (= \$ (first (_get-buffer l-ctx chnk)))
@@ -164,13 +164,17 @@
             chnk)
           (get tok-len :value)))
       :token-val
-        (assoc
-          l-ctx
-          :last-tok
-          (subs
-            (_get-buffer l-ctx chnk)
-            0
-            kolboinik))))
+        (_eat-line-endings
+          (_incr-buffer-offset
+            (assoc
+              l-ctx
+              :last-token
+              (subs
+                (_get-buffer l-ctx chnk)
+                0
+                offset-inc))
+            offset-inc)
+          chnk)))
 )
 
 ;;
@@ -189,68 +193,37 @@
       1))
 )
 
-(defn command-name-parse
-    "Parses the command name token."
-    [ctx chnk]
-  (log/infof "command-name-parse Called with ctx %s" ctx)
-  (loop [state :dollar-sign
-         loop-ctx ctx]
-    (case state
-      :dollar-sign
-      (if (= \$ (first (_get-buffer loop-ctx chnk)))
-        (do
-          (log/debug "Found $ sign, as expected")
-          (recur :token-len (_incr-buffer-offset loop-ctx 1)))
-        (do
-          (log/infof "Couldn't find a $ sign, the buffer is %s, ctx is: %s"
-            (_get-buffer loop-ctx chnk) loop-ctx)
-          (_change-state loop-ctx :parse-error)))
-      :token-len
-      (let [tok-len (a-to-i (_get-buffer loop-ctx chnk))
-            len-prefix (int (Math/ceil (Math/log10 tok-len)))
-            tmp-ctx (_eat-token loop-ctx chnk len-prefix)]
-        (log/infof
-          "Parsing command-name: tok-len=%d, len-perfix=%d, tmp-ctx=%s"
-          tok-len
-          len-prefix
-          tmp-ctx)
-        (_change-state
-          (_eat-token
-            (_set-command-ty
-              tmp-ctx
-              (subs (_get-buffer tmp-ctx chnk) 0 tok-len))
-            chnk
-            tok-len)
-          :keys))))
-)
-
 (defn num-tokens-parse
   [ctx chnk]
   (log/infof "Parsing # of tokens with context: %s" ctx)
-  (let [num-tokens (a-to-i (_get-buffer ctx chnk))
-        char-read (int (Math/ceil (Math/log10 num-tokens)))]
-    (log/infof "num-tokens-parse: number of char read is %d" char-read)
+  (let [num-token (a-to-i (_get-buffer ctx chnk))]
     (_change-state
       (_set-token-number
         (_eat-token
           ctx
           chnk
-          char-read)
-        num-tokens)
+          (get num-token :len))
+        (get num-token :value))
       :command-name))
+)
+
+(defn command-name-parse
+    "Parses the command name token."
+    [ctx chnk]
+  (log/infof "Parsing command name with context %s" ctx)
+  (let [ctx (_parse-token ctx chnk)]
+    (_change-state
+      (_set-command-ty ctx (get ctx :last-token))
+      :keys))
 )
 
 (defn keys-parse
   [ctx chnk]
   (log/infof "Parsing key with context: %s" ctx)
-  (let [key-token (_parse-token ctx chnk)]
+  (let [ctx (_parse-token ctx chnk) cur-keys (get ctx :command-keys)]
+    (log/infof "Context after key parsing: %s" ctx)
     (_change-state
-      (assoc
-        ctx :command-keys
-        (subs
-          (_get-buffer ctx chnk)
-          0
-          (:value key-token)))
+      (assoc ctx :command-keys (conj cur-keys (get ctx :last-token)))
       :data))
 )
 
