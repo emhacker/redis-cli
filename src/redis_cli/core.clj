@@ -278,7 +278,6 @@
     ctx)
 )
 
-<<<<<<< HEAD
 (defn is-final-state?
   "Inidicates whether the given parsing context is in final state."
   [ctx]
